@@ -1,20 +1,11 @@
-import datetime
-import os
-import re
-from typing import Literal, Optional
+from typing import Optional
 
-import torch
 import streamlit as st
 from streamlit_drawable_canvas import st_canvas
-from diffusers import (
-    StableDiffusionPipeline,
-    EulerDiscreteScheduler,
-    StableDiffusionInpaintPipeline,
-    StableDiffusionImg2ImgPipeline,
-)
 from PIL import Image
 
-PIPELINE_NAMES = Literal["txt2img", "inpaint", "img2img"]
+from sd2.generate import PIPELINE_NAMES, generate
+
 DEFAULT_PROMPT = "border collie puppy"
 DEFAULT_WIDTH, DEFAULT_HEIGHT = 512, 512
 OUTPUT_IMAGE_KEY = "output_img"
@@ -31,69 +22,39 @@ def set_image(key: str, img: Image.Image):
     st.session_state[key] = img
 
 
-@st.cache(allow_output_mutation=True, max_entries=1)
-def get_pipeline(name: PIPELINE_NAMES):
-    if name in ["txt2img", "img2img"]:
-        model_id = "stabilityai/stable-diffusion-2-base"
-        scheduler = EulerDiscreteScheduler.from_pretrained(
-            model_id, subfolder="scheduler"
-        )
-        pipe = StableDiffusionPipeline.from_pretrained(
-            model_id, scheduler=scheduler, revision="fp16", torch_dtype=torch.float16
-        )
-        if name == "img2img":
-            pipe = StableDiffusionImg2ImgPipeline(**pipe.components)
-        pipe = pipe.to("cuda")
-        return pipe
-    elif name == "inpaint":
-        pipe = StableDiffusionInpaintPipeline.from_pretrained(
-            "stabilityai/stable-diffusion-2-inpainting",
-            revision="fp16",
-            torch_dtype=torch.float16,
-        )
-        pipe = pipe.to("cuda")
-        return pipe
-
-
-def generate(prompt, pipeline_name: PIPELINE_NAMES, image_input=None, mask_input=None):
-    """Generates an image based on the given prompt and pipeline name"""
-    if pipeline_name == "inpaint" and image_input and mask_input:
-        pipe = get_pipeline(pipeline_name)
-        image = pipe(prompt=prompt, image=image_input, mask_image=mask_input).images[0]
-    elif pipeline_name == "txt2img":
-        pipe = get_pipeline(pipeline_name)
-        image = pipe(prompt).images[0]
-    elif pipeline_name == "img2img" and image_input:
-        pipe = get_pipeline(pipeline_name)
-        image = pipe(prompt, init_image=image_input).images[0]
-    else:
-        raise Exception(
-            f"Cannot generate image for pipeline {pipeline_name} and {prompt}"
-        )
-
-    os.makedirs("outputs", exist_ok=True)
-
-    filename = (
-        "outputs/"
-        + re.sub(r"\s+", "_", prompt)[:50]
-        + f"_{datetime.datetime.now().timestamp()}"
-    )
-    image.save(f"{filename}.png")
-    set_image(OUTPUT_IMAGE_KEY, image.copy())
-    with open(f"{filename}.txt", "w") as f:
-        f.write(prompt)
-    return image
-
-
 def prompt_and_generate_button(prefix, pipeline_name: PIPELINE_NAMES, **kwargs):
     prompt = st.text_area(
         "Prompt",
         value=DEFAULT_PROMPT,
         key=f"{prefix}-prompt",
     )
+    negative_prompt = st.text_area(
+        "Negative prompt",
+        value="",
+        key=f"{prefix}-negative-prompt",
+    )
+    use_wrong_token = st.checkbox(
+        "Use <wrong> token",
+        key=f"{prefix}-check-wrong",
+    )
+    st.write('To use it write "in the style of <wrong>" in negative prompt')
+    use_midjourney_token = st.checkbox(
+        "Use <midjourney> token",
+        key=f"{prefix}-check-midjourney",
+    )
+    st.write('To use it write "in the style of <midjourney>" in normal prompt')
+
     if st.button("Generate image", key=f"{prefix}-btn"):
         with st.spinner("Generating image..."):
-            image = generate(prompt, pipeline_name, **kwargs)
+            image = generate(
+                prompt,
+                pipeline_name,
+                negative_prompt=negative_prompt,
+                use_wrong_token=use_wrong_token,
+                use_midjourney_token=use_midjourney_token,
+                **kwargs,
+            )
+            set_image(OUTPUT_IMAGE_KEY, image.copy())
         st.image(image)
 
 
@@ -177,10 +138,10 @@ def img2img_tab():
 def main():
     st.set_page_config(layout="wide")
     st.title("Stable Diffusion 2.0 Simple Playground")
+
     tab1, tab2, tab3 = st.tabs(
         ["Text to Image (txt2img)", "Inpainting", "Image to image (img2img)"]
     )
-
     with tab1:
         txt2img_tab()
 
