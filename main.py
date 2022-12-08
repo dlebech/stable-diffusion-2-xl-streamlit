@@ -33,6 +33,19 @@ def prompt_and_generate_button(prefix, pipeline_name: PIPELINE_NAMES, **kwargs):
         value="",
         key=f"{prefix}-negative-prompt",
     )
+    if st.button("Generate image", key=f"{prefix}-btn"):
+        with st.spinner("Generating image..."):
+            image = generate(
+                prompt,
+                pipeline_name,
+                negative_prompt=negative_prompt,
+                **kwargs,
+            )
+            set_image(OUTPUT_IMAGE_KEY, image.copy())
+        st.image(image)
+
+
+def width_height_sliders(prefix):
     col1, col2 = st.columns(2)
     with col1:
         width = st.slider(
@@ -52,19 +65,7 @@ def prompt_and_generate_button(prefix, pipeline_name: PIPELINE_NAMES, **kwargs):
             value=512,
             key=f"{prefix}-height",
         )
-
-    if st.button("Generate image", key=f"{prefix}-btn"):
-        with st.spinner("Generating image..."):
-            image = generate(
-                prompt,
-                pipeline_name,
-                negative_prompt=negative_prompt,
-                width=width,
-                height=height,
-                **kwargs,
-            )
-            set_image(OUTPUT_IMAGE_KEY, image.copy())
-        st.image(image)
+    return width, height
 
 
 def image_uploader(prefix):
@@ -115,7 +116,9 @@ def inpainting():
 
 
 def txt2img_tab():
-    prompt_and_generate_button("txt2img", "txt2img")
+    prefix = "txt2img"
+    width, height = width_height_sliders(prefix)
+    prompt_and_generate_button(prefix, "txt2img", width=width, height=height)
 
 
 def inpainting_tab():
@@ -144,12 +147,39 @@ def img2img_tab():
             prompt_and_generate_button("img2img", "img2img", image_input=image)
 
 
+def video_tab():
+    prefix = "video"
+    width, height = width_height_sliders(prefix)
+    prompt_from = st.text_input(
+        "Prompt From",
+        value=DEFAULT_PROMPT,
+        key=f"{prefix}-from-prompt",
+    )
+    prompt_to = st.text_input(
+        "Prompt To",
+        value="",
+        key=f"{prefix}-to-prompt",
+    )
+    if st.button("Generate video", key=f"{prefix}-btn"):
+        with st.spinner("Generating video..."):
+            video = generate(
+                prompt_from,
+                "video",
+                prompt_to=prompt_to,
+                width=width,
+                height=height,
+            )
+            # set_image(OUTPUT_IMAGE_KEY, image.copy())
+            print(video)
+        # st.image(image)
+
+
 def main():
     st.set_page_config(layout="wide")
     st.title("Stable Diffusion 2.0 Simple Playground")
 
-    tab1, tab2, tab3 = st.tabs(
-        ["Text to Image (txt2img)", "Inpainting", "Image to image (img2img)"]
+    tab1, tab2, tab3, tab4 = st.tabs(
+        ["Text to Image (txt2img)", "Inpainting", "Image to image (img2img)", "Video"]
     )
     with tab1:
         txt2img_tab()
@@ -159,6 +189,9 @@ def main():
 
     with tab3:
         img2img_tab()
+
+    with tab4:
+        video_tab()
 
     with st.sidebar:
         st.header("Latest Output Image")

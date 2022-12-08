@@ -1,5 +1,6 @@
 import datetime
 import os
+import random
 import re
 from typing import Literal, Union
 
@@ -8,12 +9,14 @@ import torch
 from diffusers import (
     StableDiffusionPipeline,
     EulerDiscreteScheduler,
-    DPMSolverMultistepScheduler,
     StableDiffusionInpaintPipeline,
     StableDiffusionImg2ImgPipeline,
 )
+from stable_diffusion_videos import StableDiffusionWalkPipeline
 
-PIPELINE_NAMES = Literal["txt2img", "inpaint", "img2img"]
+PIPELINE_NAMES = Literal["txt2img", "inpaint", "img2img", "video"]
+OUTPUT_DIR = "outputs"
+OUTPUT_VIDEO_DIR = "outputs/video"
 
 
 @st.cache(allow_output_mutation=True, max_entries=1)
@@ -23,6 +26,7 @@ def get_pipeline(
     StableDiffusionPipeline,
     StableDiffusionImg2ImgPipeline,
     StableDiffusionInpaintPipeline,
+    StableDiffusionWalkPipeline,
 ]:
     if name in ["txt2img", "img2img"]:
         model_id = "stabilityai/stable-diffusion-2-1-base"
@@ -56,6 +60,22 @@ def get_pipeline(
         )
         pipe = pipe.to("cuda")
         return pipe
+    elif name == "video":
+        model_id = "stabilityai/stable-diffusion-2-base"
+        scheduler = EulerDiscreteScheduler.from_pretrained(
+            model_id,
+            subfolder="scheduler",
+        )
+        pipe = StableDiffusionWalkPipeline.from_pretrained(
+            model_id,
+            scheduler=scheduler,
+            feature_extractor=None,
+            safety_checker=None,
+            revision="fp16",
+            torch_dtype=torch.float16,
+        )
+        pipe = pipe.to("cuda")
+        return pipe
 
 
 def generate(
@@ -64,6 +84,7 @@ def generate(
     image_input=None,
     mask_input=None,
     negative_prompt=None,
+    prompt_to=None,
     width=512,
     height=512,
 ):
@@ -83,6 +104,8 @@ def generate(
         callback=callback,
     )
 
+    os.makedirs(OUTPUT_VIDEO_DIR, exist_ok=True)
+
     if pipeline_name == "inpaint" and image_input and mask_input:
         kwargs.update(image=image_input, mask_image=mask_input)
     elif pipeline_name == "txt2img":
@@ -91,6 +114,18 @@ def generate(
         kwargs.update(
             init_image=image_input,
         )
+    elif pipeline_name == "video" and prompt_to:
+        video_path = pipe.walk(
+            prompts=[prompt, prompt_to],
+            seeds=[random.randint(1, 10_000), random.randint(1, 10_000)],
+            num_inference_steps=20,
+            num_interpolation_steps=20,
+            width=width,
+            height=height,
+            output_dir=OUTPUT_VIDEO_DIR,
+            name="test2",
+        )
+        return video_path
     else:
         raise Exception(
             f"Cannot generate image for pipeline {pipeline_name} and {prompt}"
@@ -99,10 +134,9 @@ def generate(
     with torch.autocast("cuda"):
         image = pipe(**kwargs).images[0]
 
-    os.makedirs("outputs", exist_ok=True)
-
     filename = (
-        "outputs/"
+        OUTPUT_DIR
+        + "/"
         + re.sub(r"\s+", "_", prompt)[:50]
         + f"_{datetime.datetime.now().timestamp()}"
     )
