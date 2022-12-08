@@ -130,3 +130,5 @@ dmypy.json
 
 # Ignore the output folder
 outputs/
+
+*.bin
