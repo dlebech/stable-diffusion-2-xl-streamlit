@@ -33,16 +33,25 @@ def prompt_and_generate_button(prefix, pipeline_name: PIPELINE_NAMES, **kwargs):
         value="",
         key=f"{prefix}-negative-prompt",
     )
-    use_wrong_token = st.checkbox(
-        "Use <wrong> token",
-        key=f"{prefix}-check-wrong",
-    )
-    st.write('To use it write "in the style of <wrong>" in negative prompt')
-    use_midjourney_token = st.checkbox(
-        "Use <midjourney> token",
-        key=f"{prefix}-check-midjourney",
-    )
-    st.write('To use it write "in the style of <midjourney>" in normal prompt')
+    col1, col2 = st.columns(2)
+    with col1:
+        width = st.slider(
+            "Width",
+            min_value=64,
+            max_value=1024,
+            step=64,
+            value=512,
+            key=f"{prefix}-width",
+        )
+    with col2:
+        height = st.slider(
+            "Height",
+            min_value=64,
+            max_value=1024,
+            step=64,
+            value=512,
+            key=f"{prefix}-height",
+        )
 
     if st.button("Generate image", key=f"{prefix}-btn"):
         with st.spinner("Generating image..."):
@@ -50,8 +59,8 @@ def prompt_and_generate_button(prefix, pipeline_name: PIPELINE_NAMES, **kwargs):
                 prompt,
                 pipeline_name,
                 negative_prompt=negative_prompt,
-                use_wrong_token=use_wrong_token,
-                use_midjourney_token=use_midjourney_token,
+                width=width,
+                height=height,
                 **kwargs,
             )
             set_image(OUTPUT_IMAGE_KEY, image.copy())

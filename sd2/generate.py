@@ -8,34 +8,25 @@ import torch
 from diffusers import (
     StableDiffusionPipeline,
     EulerDiscreteScheduler,
+    DPMSolverMultistepScheduler,
     StableDiffusionInpaintPipeline,
     StableDiffusionImg2ImgPipeline,
 )
-
-from . import embedding
-
 
 PIPELINE_NAMES = Literal["txt2img", "inpaint", "img2img"]
 
 
 @st.cache(allow_output_mutation=True, max_entries=1)
 def get_pipeline(
-    name: PIPELINE_NAMES, use_wrong_token=False, use_midjourney_token=False
+    name: PIPELINE_NAMES,
 ) -> Union[
     StableDiffusionPipeline,
     StableDiffusionImg2ImgPipeline,
     StableDiffusionInpaintPipeline,
 ]:
     if name in ["txt2img", "img2img"]:
-        model_id = "stabilityai/stable-diffusion-2-base"
+        model_id = "stabilityai/stable-diffusion-2-1-base"
 
-        text_encoder, tokenizer = embedding.load_custom_token(
-            model_id,
-            use_wrong_token=use_wrong_token,
-            use_midjourney_token=use_midjourney_token,
-        )
-
-        # scheduler = EulerAncestralDiscreteScheduler.from_pretrained(
         scheduler = EulerDiscreteScheduler.from_pretrained(
             model_id,
             subfolder="scheduler",
@@ -45,27 +36,23 @@ def get_pipeline(
             scheduler=scheduler,
             revision="fp16",
             torch_dtype=torch.float16,
-            text_encoder=text_encoder,
-            tokenizer=tokenizer,
         )
+        # pipe = StableDiffusionPipeline.from_pretrained(
+        #    model_id, torch_dtype=torch.float16
+        # )
+        # pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
+
         if name == "img2img":
             pipe = StableDiffusionImg2ImgPipeline(**pipe.components)
         pipe = pipe.to("cuda")
         return pipe
     elif name == "inpaint":
         model_id = "stabilityai/stable-diffusion-2-inpainting"
-        text_encoder, tokenizer = embedding.load_custom_token(
-            model_id,
-            use_wrong_token=use_wrong_token,
-            use_midjourney_token=use_midjourney_token,
-        )
 
         pipe = StableDiffusionInpaintPipeline.from_pretrained(
             model_id,
             revision="fp16",
             torch_dtype=torch.float16,
-            text_encoder=text_encoder,
-            tokenizer=tokenizer,
         )
         pipe = pipe.to("cuda")
         return pipe
@@ -77,8 +64,8 @@ def generate(
     image_input=None,
     mask_input=None,
     negative_prompt=None,
-    use_wrong_token=False,
-    use_midjourney_token=False,
+    width=512,
+    height=512,
 ):
     """Generates an image based on the given prompt and pipeline name"""
     steps = 50
@@ -86,11 +73,7 @@ def generate(
     p = st.progress(0)
     callback = lambda step, *_: p.progress(step / steps)
 
-    pipe = get_pipeline(
-        pipeline_name,
-        use_wrong_token=use_wrong_token,
-        use_midjourney_token=use_midjourney_token,
-    )
+    pipe = get_pipeline(pipeline_name)
     torch.cuda.empty_cache()
 
     kwargs = dict(
@@ -103,7 +86,7 @@ def generate(
     if pipeline_name == "inpaint" and image_input and mask_input:
         kwargs.update(image=image_input, mask_image=mask_input)
     elif pipeline_name == "txt2img":
-        pass
+        kwargs.update(width=width, height=height)
     elif pipeline_name == "img2img" and image_input:
         kwargs.update(
             init_image=image_input,

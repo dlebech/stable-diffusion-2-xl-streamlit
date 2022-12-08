@@ -3,12 +3,10 @@
 A *super minimal* Streamlit app for playing around with Stable Diffusion 2.
 
 Includes:
-- Text to image (txt2img)
-- Image to image (img2img)
-- Inpainting
-- Negative prompt input
-- Custom token embeddings from [minimaxir](https://github.com/minimaxir)
-  - More information in [this blog post](https://minimaxir.com/2022/11/stable-diffusion-negative-prompt/)
+- Text to image (txt2img) (v2.1)
+- Image to image (img2img) (v2.1)
+- Inpainting (v2.0)
+- Negative prompt input for all methods.
 
 ## Requirements
 
@@ -40,8 +38,4 @@ Mostly created this because I couldn't find a simple UI in the days right after 
 
 Code written by me can be freely used under the [CC0 license](/LICENSE). This covers all code except where otherwise noted.
 
-Some included functions are covered by other licenses, and they are clearly marked with their own license and copyright notice.
-
-In other words: *You cannot treat this entire repository as CC0*. In order to do so, you would need to remove other licensed work.
-
-Also remember to check the license of the downloaded models as well :-)
+Always remember to check the license of the downloaded models as well :-)
