@@ -33,6 +33,10 @@ def prompt_and_generate_button(prefix, pipeline_name: PIPELINE_NAMES, **kwargs):
         value="",
         key=f"{prefix}-negative-prompt",
     )
+    steps = st.slider("Number of inference steps", min_value=1, max_value=200, value=50)
+    guidance_scale = st.slider(
+        "Guidance scale", min_value=0.0, max_value=20.0, value=7.5, step=0.5
+    )
 
     if st.button("Generate image", key=f"{prefix}-btn"):
         with st.spinner("Generating image..."):
@@ -40,6 +44,8 @@ def prompt_and_generate_button(prefix, pipeline_name: PIPELINE_NAMES, **kwargs):
                 prompt,
                 pipeline_name,
                 negative_prompt=negative_prompt,
+                steps=steps,
+                guidance_scale=guidance_scale,
                 **kwargs,
             )
             set_image(OUTPUT_IMAGE_KEY, image.copy())

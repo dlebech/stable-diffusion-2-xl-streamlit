@@ -37,10 +37,6 @@ def get_pipeline(
             revision="fp16",
             torch_dtype=torch.float16,
         )
-        # pipe = StableDiffusionPipeline.from_pretrained(
-        #    model_id, torch_dtype=torch.float16
-        # )
-        # pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
 
         if name == "img2img":
             pipe = StableDiffusionImg2ImgPipeline(**pipe.components)
@@ -64,11 +60,12 @@ def generate(
     image_input=None,
     mask_input=None,
     negative_prompt=None,
+    steps=50,
     width=512,
     height=512,
+    guidance_scale=7.5,
 ):
     """Generates an image based on the given prompt and pipeline name"""
-    steps = 50
     negative_prompt = negative_prompt if negative_prompt else None
     p = st.progress(0)
     callback = lambda step, *_: p.progress(step / steps)
@@ -81,7 +78,10 @@ def generate(
         negative_prompt=negative_prompt,
         num_inference_steps=steps,
         callback=callback,
+        guidance_scale=guidance_scale,
     )
+
+    print("kwargs", kwargs)
 
     if pipeline_name == "inpaint" and image_input and mask_input:
         kwargs.update(image=image_input, mask_image=mask_input)
