@@ -89,7 +89,7 @@ def generate(
         kwargs.update(width=width, height=height)
     elif pipeline_name == "img2img" and image_input:
         kwargs.update(
-            init_image=image_input,
+            image=image_input,
         )
     else:
         raise Exception(

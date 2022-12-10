@@ -33,6 +33,20 @@ def prompt_and_generate_button(prefix, pipeline_name: PIPELINE_NAMES, **kwargs):
         value="",
         key=f"{prefix}-negative-prompt",
     )
+
+    if st.button("Generate image", key=f"{prefix}-btn"):
+        with st.spinner("Generating image..."):
+            image = generate(
+                prompt,
+                pipeline_name,
+                negative_prompt=negative_prompt,
+                **kwargs,
+            )
+            set_image(OUTPUT_IMAGE_KEY, image.copy())
+        st.image(image)
+
+
+def width_and_height_sliders(prefix):
     col1, col2 = st.columns(2)
     with col1:
         width = st.slider(
@@ -52,19 +66,7 @@ def prompt_and_generate_button(prefix, pipeline_name: PIPELINE_NAMES, **kwargs):
             value=512,
             key=f"{prefix}-height",
         )
-
-    if st.button("Generate image", key=f"{prefix}-btn"):
-        with st.spinner("Generating image..."):
-            image = generate(
-                prompt,
-                pipeline_name,
-                negative_prompt=negative_prompt,
-                width=width,
-                height=height,
-                **kwargs,
-            )
-            set_image(OUTPUT_IMAGE_KEY, image.copy())
-        st.image(image)
+    return width, height
 
 
 def image_uploader(prefix):
@@ -115,7 +117,9 @@ def inpainting():
 
 
 def txt2img_tab():
-    prompt_and_generate_button("txt2img", "txt2img")
+    prefix = "txt2img"
+    width, height = width_and_height_sliders(prefix)
+    prompt_and_generate_button(prefix, "txt2img", width=width, height=height)
 
 
 def inpainting_tab():
