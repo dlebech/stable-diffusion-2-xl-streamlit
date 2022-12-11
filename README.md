@@ -26,6 +26,11 @@ The first time it runs, it will download the model from Hugging Face automatical
 
 Images are automatical.ly saved in and `outputs/` folder, along with their prompt.
 
+### Upscale
+
+The upscale model is more memory-hungry than the main model for some reason. It currently requires [xformers](https://github.com/facebookresearch/xformers), so if you want to use the upscale functionality, either install that library or comment out `pipe.enable_xformers_memory_efficient_attention()` during model instantiation.
+ 
+
 ### Out of memory errors
 
 Out of memory errors occur frequently in my setup (8GB GPU), even though I've tried to limit the usage of cache and clean up the CUDA. They are quickly fixed with a clear cache and rerun in Streamlit, conveniently accessible on the C and R keys.

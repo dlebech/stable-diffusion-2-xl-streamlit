@@ -8,12 +8,12 @@ import torch
 from diffusers import (
     StableDiffusionPipeline,
     EulerDiscreteScheduler,
-    DPMSolverMultistepScheduler,
     StableDiffusionInpaintPipeline,
     StableDiffusionImg2ImgPipeline,
+    StableDiffusionUpscalePipeline,
 )
 
-PIPELINE_NAMES = Literal["txt2img", "inpaint", "img2img"]
+PIPELINE_NAMES = Literal["txt2img", "inpaint", "img2img", "upscale"]
 
 
 @st.cache(allow_output_mutation=True, max_entries=1)
@@ -52,6 +52,14 @@ def get_pipeline(
         )
         pipe = pipe.to("cuda")
         return pipe
+    elif name == "upscale":
+        model_id = "stabilityai/stable-diffusion-x4-upscaler"
+        pipe = StableDiffusionUpscalePipeline.from_pretrained(
+            model_id, revision="fp16", torch_dtype=torch.float16
+        )
+        pipe = pipe.to("cuda")
+        pipe.enable_xformers_memory_efficient_attention()
+        return pipe
 
 
 def generate(
@@ -81,23 +89,23 @@ def generate(
         guidance_scale=guidance_scale,
     )
 
-    print("kwargs", kwargs)
+    print("kwargs", kwargs, "model", pipe)
 
     if pipeline_name == "inpaint" and image_input and mask_input:
         kwargs.update(image=image_input, mask_image=mask_input)
     elif pipeline_name == "txt2img":
         kwargs.update(width=width, height=height)
-    elif pipeline_name == "img2img" and image_input:
-        kwargs.update(
-            image=image_input,
-        )
+    elif pipeline_name in ["img2img", "upscale"] and image_input:
+        kwargs.update(image=image_input)
     else:
         raise Exception(
             f"Cannot generate image for pipeline {pipeline_name} and {prompt}"
         )
 
     with torch.autocast("cuda"):
-        image = pipe(**kwargs).images[0]
+        result = pipe(**kwargs)
+        print(result)
+        image = result.images[0]
 
     os.makedirs("outputs", exist_ok=True)
 

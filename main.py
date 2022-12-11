@@ -4,7 +4,7 @@ import streamlit as st
 from streamlit_drawable_canvas import st_canvas
 from PIL import Image
 
-from sd2.generate import PIPELINE_NAMES, generate
+from sd2.generate import PIPELINE_NAMES, generate, get_pipeline
 
 DEFAULT_PROMPT = "border collie puppy"
 DEFAULT_WIDTH, DEFAULT_HEIGHT = 512, 512
@@ -33,9 +33,20 @@ def prompt_and_generate_button(prefix, pipeline_name: PIPELINE_NAMES, **kwargs):
         value="",
         key=f"{prefix}-negative-prompt",
     )
-    steps = st.slider("Number of inference steps", min_value=1, max_value=200, value=50)
+    steps = st.slider(
+        "Number of inference steps",
+        min_value=1,
+        max_value=200,
+        value=50,
+        key=f"{prefix}-steps",
+    )
     guidance_scale = st.slider(
-        "Guidance scale", min_value=0.0, max_value=20.0, value=7.5, step=0.5
+        "Guidance scale",
+        min_value=0.0,
+        max_value=20.0,
+        value=7.5,
+        step=0.5,
+        key=f"{prefix}-guidance",
     )
 
     if st.button("Generate image", key=f"{prefix}-btn"):
@@ -75,12 +86,12 @@ def width_and_height_sliders(prefix):
     return width, height
 
 
-def image_uploader(prefix):
+def image_uploader(prefix, width=DEFAULT_WIDTH, height=DEFAULT_HEIGHT):
     image = st.file_uploader("Image", ["jpg", "png"], key=f"{prefix}-uploader")
     if image:
         image = Image.open(image)
         print(f"loaded input image of size ({image.width}, {image.height})")
-        image = image.resize((DEFAULT_WIDTH, DEFAULT_HEIGHT))
+        image = image.resize((width, height))
         return image
 
     return get_image(LOADED_IMAGE_KEY)
@@ -154,12 +165,28 @@ def img2img_tab():
             prompt_and_generate_button("img2img", "img2img", image_input=image)
 
 
+def upscale_tab():
+    prefix = "upscale"
+    image = image_uploader(prefix, 256, 256)
+    if image:
+        st.image(image)
+    prompt_and_generate_button(prefix, "upscale", image_input=image)
+    # let's download an  image
+    # import requests
+    # from io import BytesIO
+
+    # url = "https://huggingface.co/datasets/hf-internal-testing/diffusers-images/resolve/main/sd2-upscale/low_res_cat.png"
+    # response = requests.get(url)
+    # low_res_img = Image.open(BytesIO(response.content)).convert("RGB")
+    # low_res_img = low_res_img.resize((128, 128))
+
+
 def main():
     st.set_page_config(layout="wide")
     st.title("Stable Diffusion 2.0 Simple Playground")
 
-    tab1, tab2, tab3 = st.tabs(
-        ["Text to Image (txt2img)", "Inpainting", "Image to image (img2img)"]
+    tab1, tab2, tab3, tab4 = st.tabs(
+        ["Text to Image (txt2img)", "Inpainting", "Image to image (img2img)", "Upscale"]
     )
     with tab1:
         txt2img_tab()
@@ -169,6 +196,9 @@ def main():
 
     with tab3:
         img2img_tab()
+
+    with tab4:
+        upscale_tab()
 
     with st.sidebar:
         st.header("Latest Output Image")
