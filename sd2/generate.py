@@ -11,12 +11,13 @@ from diffusers import (
     StableDiffusionInpaintPipeline,
     StableDiffusionImg2ImgPipeline,
     StableDiffusionUpscalePipeline,
+    StableDiffusionLatentUpscalePipeline
 )
 
 PIPELINE_NAMES = Literal["txt2img", "inpaint", "img2img", "upscale"]
 
 
-@st.cache(allow_output_mutation=True, max_entries=1)
+@st.cache_resource(max_entries=1)
 def get_pipeline(
     name: PIPELINE_NAMES,
 ) -> Union[
@@ -41,6 +42,7 @@ def get_pipeline(
         if name == "img2img":
             pipe = StableDiffusionImg2ImgPipeline(**pipe.components)
         pipe = pipe.to("cuda")
+        pipe.enable_attention_slicing()
         return pipe
     elif name == "inpaint":
         model_id = "stabilityai/stable-diffusion-2-inpainting"
@@ -104,8 +106,17 @@ def generate(
 
     with torch.autocast("cuda"):
         result = pipe(**kwargs)
-        print(result)
+        # print(result)
+        # print('upscaling')
+        # upscaler = StableDiffusionLatentUpscalePipeline.from_pretrained("stabilityai/sd-x2-latent-upscaler", torch_dtype=torch.float16)
+        # upscaler = upscaler.to("cuda")
+        # new_result = upscaler(
+        #     prompt=kwargs.get('prompt'),
+        #     guidance_scale=0,
+        #     image=result.images
+        # )
         image = result.images[0]
+        #newimage = new_result.images[0]
 
     os.makedirs("outputs", exist_ok=True)
 
@@ -114,6 +125,7 @@ def generate(
         + re.sub(r"\s+", "_", prompt)[:50]
         + f"_{datetime.datetime.now().timestamp()}"
     )
+    #newimage.save(f"{filename}_scaled.png")
     image.save(f"{filename}.png")
     with open(f"{filename}.txt", "w") as f:
         f.write(prompt)
