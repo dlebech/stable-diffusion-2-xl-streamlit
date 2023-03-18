@@ -8,7 +8,6 @@ import torch
 from diffusers import (
     StableDiffusionPipeline,
     EulerDiscreteScheduler,
-    DPMSolverMultistepScheduler,
     StableDiffusionInpaintPipeline,
     StableDiffusionImg2ImgPipeline,
 )
@@ -16,7 +15,7 @@ from diffusers import (
 PIPELINE_NAMES = Literal["txt2img", "inpaint", "img2img"]
 
 
-@st.cache(allow_output_mutation=True, max_entries=1)
+@st.cache_resource(max_entries=1)
 def get_pipeline(
     name: PIPELINE_NAMES,
 ) -> Union[
@@ -64,6 +63,7 @@ def generate(
     width=512,
     height=512,
     guidance_scale=7.5,
+    enable_attention_slicing=False
 ):
     """Generates an image based on the given prompt and pipeline name"""
     negative_prompt = negative_prompt if negative_prompt else None
@@ -72,6 +72,11 @@ def generate(
 
     pipe = get_pipeline(pipeline_name)
     torch.cuda.empty_cache()
+
+    if enable_attention_slicing:
+        pipe.enable_attention_slicing()
+    else:
+        pipe.disable_attention_slicing()
 
     kwargs = dict(
         prompt=prompt,
@@ -96,8 +101,7 @@ def generate(
             f"Cannot generate image for pipeline {pipeline_name} and {prompt}"
         )
 
-    with torch.autocast("cuda"):
-        image = pipe(**kwargs).images[0]
+    image = pipe(**kwargs).images[0]
 
     os.makedirs("outputs", exist_ok=True)
 

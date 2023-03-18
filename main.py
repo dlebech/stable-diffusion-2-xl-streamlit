@@ -33,10 +33,14 @@ def prompt_and_generate_button(prefix, pipeline_name: PIPELINE_NAMES, **kwargs):
         value="",
         key=f"{prefix}-negative-prompt",
     )
-    steps = st.slider("Number of inference steps", min_value=1, max_value=200, value=50)
-    guidance_scale = st.slider(
-        "Guidance scale", min_value=0.0, max_value=20.0, value=7.5, step=0.5
-    )
+    col1, col2 = st.columns(2)
+    with col1:
+        steps = st.slider("Number of inference steps", min_value=1, max_value=200, value=50, key=f"{prefix}-inference-steps")
+    with col2:
+        guidance_scale = st.slider(
+            "Guidance scale", min_value=0.0, max_value=20.0, value=7.5, step=0.5, key=f"{prefix}-guidance-scale"
+        )
+    enable_attention_slicing = st.checkbox('Enable attention slicing (enables higher resolutions but is slower)', key=f"{prefix}-attention-slicing")
 
     if st.button("Generate image", key=f"{prefix}-btn"):
         with st.spinner("Generating image..."):
@@ -46,6 +50,7 @@ def prompt_and_generate_button(prefix, pipeline_name: PIPELINE_NAMES, **kwargs):
                 negative_prompt=negative_prompt,
                 steps=steps,
                 guidance_scale=guidance_scale,
+                enable_attention_slicing=enable_attention_slicing,
                 **kwargs,
             )
             set_image(OUTPUT_IMAGE_KEY, image.copy())
