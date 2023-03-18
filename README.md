@@ -8,12 +8,19 @@ Includes:
 - Inpainting (v2.0)
 - Negative prompt input for all methods.
 
+Uses the "base" (512px) model in most cases.
+
 ## Requirements
 
 - Stable Diffusion generally requires a GPU with at least 8GB of memory.
-- Make sure you have the Nvidia drivers and all that
+- Make sure you have the Nvidia drivers and all that.
 
-Personally, I'm running this on Ubuntu 22.04 with an RTX 2070 GPU (8GB memory) using Python 3.10 in a fresh conda environment
+Observations based on my own machine:
+- Using Ubuntu 22.04 with an RTX 2070 GPU (8GB memory)
+- Using Python 3.10 in a fresh conda environment.
+- Can generate 640x576 images without attention slicing
+- Can generate 960x896 images with attention slicing (lower performance)
+- Changing the model from the 512 model to the 768 model works but it is only possible to produce 768x768 images with attention slicing.
 
 ## Install & Run
 
