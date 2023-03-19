@@ -8,7 +8,7 @@ Includes:
 - Inpainting (v2.0)
 - Negative prompt input for all methods.
 
-Uses the "base" (512px) model in most cases.
+Uses the 768px model if possible. Can be changed to the base (512px) by changing the hardcoded model_id.
 
 ## Requirements
 
@@ -18,9 +18,8 @@ Uses the "base" (512px) model in most cases.
 Observations based on my own machine:
 - Using Ubuntu 22.04 with an RTX 2070 GPU (8GB memory)
 - Using Python 3.10 in a fresh conda environment.
-- Can generate 640x576 images without attention slicing
-- Can generate 960x896 images with attention slicing (lower performance)
-- Changing the model from the 512 model to the 768 model works but it is only possible to produce 768x768 images with attention slicing.
+- The 768 model works but it is only possible with xformers *or* attention slicing.
+- With xformers enabled, 768x768 pixel images are possible
 
 ## Install & Run
 

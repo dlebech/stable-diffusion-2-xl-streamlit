@@ -24,7 +24,7 @@ def get_pipeline(
     StableDiffusionInpaintPipeline,
 ]:
     if name in ["txt2img", "img2img"]:
-        model_id = "stabilityai/stable-diffusion-2-1-base"
+        model_id = "stabilityai/stable-diffusion-2-1"
 
         scheduler = EulerDiscreteScheduler.from_pretrained(
             model_id,
@@ -63,7 +63,8 @@ def generate(
     width=512,
     height=512,
     guidance_scale=7.5,
-    enable_attention_slicing=False
+    enable_attention_slicing=False,
+    enable_xformers=True
 ):
     """Generates an image based on the given prompt and pipeline name"""
     negative_prompt = negative_prompt if negative_prompt else None
@@ -77,6 +78,9 @@ def generate(
         pipe.enable_attention_slicing()
     else:
         pipe.disable_attention_slicing()
+
+    if enable_xformers:
+        pipe.enable_xformers_memory_efficient_attention()
 
     kwargs = dict(
         prompt=prompt,
