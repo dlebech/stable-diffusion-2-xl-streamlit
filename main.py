@@ -41,6 +41,7 @@ def prompt_and_generate_button(prefix, pipeline_name: PIPELINE_NAMES, **kwargs):
             "Guidance scale", min_value=0.0, max_value=20.0, value=7.5, step=0.5, key=f"{prefix}-guidance-scale"
         )
     enable_attention_slicing = st.checkbox('Enable attention slicing (enables higher resolutions but is slower)', key=f"{prefix}-attention-slicing")
+    enable_xformers = st.checkbox('Enable xformers library (better memory usage)', key=f"{prefix}-xformers", value=True)
 
     if st.button("Generate image", key=f"{prefix}-btn"):
         with st.spinner("Generating image..."):
@@ -51,6 +52,7 @@ def prompt_and_generate_button(prefix, pipeline_name: PIPELINE_NAMES, **kwargs):
                 steps=steps,
                 guidance_scale=guidance_scale,
                 enable_attention_slicing=enable_attention_slicing,
+                enable_xformers=enable_xformers,
                 **kwargs,
             )
             set_image(OUTPUT_IMAGE_KEY, image.copy())
