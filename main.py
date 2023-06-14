@@ -65,8 +65,8 @@ def width_and_height_sliders(prefix):
         width = st.slider(
             "Width",
             min_value=64,
-            max_value=1024,
-            step=64,
+            max_value=1600,
+            step=16,
             value=512,
             key=f"{prefix}-width",
         )
@@ -74,8 +74,8 @@ def width_and_height_sliders(prefix):
         height = st.slider(
             "Height",
             min_value=64,
-            max_value=1024,
-            step=64,
+            max_value=1600,
+            step=16,
             value=512,
             key=f"{prefix}-height",
         )
