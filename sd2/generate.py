@@ -60,7 +60,7 @@ def get_pipeline(
 
         if name == "img2img":
             pipe = StableDiffusionImg2ImgPipeline(**pipe.components)
-    elif name == "inpaint" and version == "2.1":
+    elif name == "inpaint" and version == "2.0":
         pipe = StableDiffusionInpaintPipeline.from_pretrained(
             "stabilityai/stable-diffusion-2-inpainting",
             revision="fp16",
@@ -94,8 +94,8 @@ def generate(
     mask_input=None,
     negative_prompt=None,
     steps=50,
-    width=512,
-    height=512,
+    width=768,
+    height=768,
     guidance_scale=7.5,
     enable_attention_slicing=False,
     enable_cpu_offload=False,
