@@ -1,4 +1,4 @@
-# stable-diffusion-2-streamlit
+# stable-diffusion-2-xl-streamlit
 
 A *super minimal* Streamlit app for playing around with Stable Diffusion 2.1 an XL 1.0.
 
