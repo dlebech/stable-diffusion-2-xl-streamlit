@@ -31,7 +31,7 @@ streamlit run main.py
 
 The first time it runs, it will download the model from Hugging Face automatically.
 
-Images are automatically saved in and `outputs/` folder, along with their prompt.
+Images are automatically saved in an `outputs/` folder, along with their prompt.
 
 ### Out of memory errors
 
