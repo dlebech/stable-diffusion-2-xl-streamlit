@@ -43,6 +43,6 @@ Mostly created this because I couldn't find a simple UI in the days right after 
 
 ## License
 
-Code written by me can be freely used under the [CC0 license](/LICENSE). This covers all code except where otherwise noted.
+Code in this repository, written by me, can be freely used under the [CC0 license](/LICENSE). This covers all code except where otherwise noted.
 
 Always remember to check the license of the downloaded models as well :-)
