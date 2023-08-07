@@ -1,14 +1,14 @@
 # stable-diffusion-2-streamlit
 
-A *super minimal* Streamlit app for playing around with Stable Diffusion 2.
+A *super minimal* Streamlit app for playing around with Stable Diffusion 2.1 an XL 1.0.
 
 Includes:
-- Text to image (txt2img) (v2.1)
-- Image to image (img2img) (v2.1)
-- Inpainting (v2.0)
+- Text to image (txt2img) (v2.1 and XL 1.0)
+- Image to image (img2img) (v2.1 and XL 1.0)
+- Inpainting (v2.0 and XL 1.0)
 - Negative prompt input for all methods.
 
-Uses the 768px model if possible. Can be changed to the base (512px) by changing the hardcoded model_id.
+Uses the 2.1 768px model by default. Can be changed to the base (512px) by changing the hardcoded model_id.
 
 ## Requirements
 
@@ -18,8 +18,9 @@ Uses the 768px model if possible. Can be changed to the base (512px) by changing
 Observations based on my own machine:
 - Using Ubuntu 22.04 with an RTX 2070 GPU (8GB memory)
 - Using Python 3.10 in a fresh conda environment.
-- The 768 model works but it is only possible with xformers *or* attention slicing.
-- With xformers enabled, 768x768 pixel images are possible
+- The 2.1 768 model works out of the box with 768x768 images.
+- For the XL 1.0 model, I personally have to use CPU offloading. Model CPU offloading is enough so it doesn't slow down inference so much.
+  - With CPU offloading, I have been able to generate 1024x1024 images using the XL model.
 
 ## Install & Run
 
@@ -30,7 +31,7 @@ streamlit run main.py
 
 The first time it runs, it will download the model from Hugging Face automatically.
 
-Images are automatical.ly saved in and `outputs/` folder, along with their prompt.
+Images are automatically saved in and `outputs/` folder, along with their prompt.
 
 ### Out of memory errors
 
