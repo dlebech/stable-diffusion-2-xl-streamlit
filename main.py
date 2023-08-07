@@ -1,10 +1,11 @@
 from typing import Optional
 
+import numpy as np
 import streamlit as st
 from streamlit_drawable_canvas import st_canvas
 from PIL import Image
 
-from sd2.generate import PIPELINE_NAMES, generate
+from sd2.generate import PIPELINE_NAMES, MODEL_VERSIONS, generate
 
 DEFAULT_PROMPT = "border collie puppy"
 DEFAULT_WIDTH, DEFAULT_HEIGHT = 512, 512
@@ -35,13 +36,31 @@ def prompt_and_generate_button(prefix, pipeline_name: PIPELINE_NAMES, **kwargs):
     )
     col1, col2 = st.columns(2)
     with col1:
-        steps = st.slider("Number of inference steps", min_value=1, max_value=200, value=50, key=f"{prefix}-inference-steps")
+        steps = st.slider(
+            "Number of inference steps",
+            min_value=1,
+            max_value=200,
+            value=20,
+            key=f"{prefix}-inference-steps",
+        )
     with col2:
         guidance_scale = st.slider(
-            "Guidance scale", min_value=0.0, max_value=20.0, value=7.5, step=0.5, key=f"{prefix}-guidance-scale"
+            "Guidance scale",
+            min_value=0.0,
+            max_value=20.0,
+            value=7.5,
+            step=0.5,
+            key=f"{prefix}-guidance-scale",
         )
-    enable_attention_slicing = st.checkbox('Enable attention slicing (enables higher resolutions but is slower)', key=f"{prefix}-attention-slicing")
-    enable_xformers = st.checkbox('Enable xformers library (better memory usage)', key=f"{prefix}-xformers", value=True)
+    enable_attention_slicing = st.checkbox(
+        "Enable attention slicing (enables higher resolutions but is slower)",
+        key=f"{prefix}-attention-slicing",
+    )
+    enable_cpu_offload = st.checkbox(
+        "Enable CPU offload (if you run out of memory, e.g. for XL model)",
+        key=f"{prefix}-cpu-offload",
+        value=False,
+    )
 
     if st.button("Generate image", key=f"{prefix}-btn"):
         with st.spinner("Generating image..."):
@@ -52,7 +71,7 @@ def prompt_and_generate_button(prefix, pipeline_name: PIPELINE_NAMES, **kwargs):
                 steps=steps,
                 guidance_scale=guidance_scale,
                 enable_attention_slicing=enable_attention_slicing,
-                enable_xformers=enable_xformers,
+                enable_cpu_offload=enable_cpu_offload,
                 **kwargs,
             )
             set_image(OUTPUT_IMAGE_KEY, image.copy())
@@ -67,7 +86,7 @@ def width_and_height_sliders(prefix):
             min_value=64,
             max_value=1600,
             step=16,
-            value=512,
+            value=768,
             key=f"{prefix}-width",
         )
     with col2:
@@ -76,7 +95,7 @@ def width_and_height_sliders(prefix):
             min_value=64,
             max_value=1600,
             step=16,
-            value=512,
+            value=768,
             key=f"{prefix}-height",
         )
     return width, height
@@ -111,9 +130,7 @@ def inpainting():
         height=image.height,
         width=image.width,
         drawing_mode="freedraw",
-        # Use repr(image) to force the component to reload when the image
-        # changes, i.e. when asking to use the current output image
-        key="inpainting",
+        key="inpainting-canvas",
     )
 
     if not canvas_result or canvas_result.image_data is None:
@@ -132,7 +149,13 @@ def inpainting():
 def txt2img_tab():
     prefix = "txt2img"
     width, height = width_and_height_sliders(prefix)
-    prompt_and_generate_button(prefix, "txt2img", width=width, height=height)
+    version = st.selectbox("Model version", ["2.1", "XL 1.0"], key=f"{prefix}-version")
+    st.markdown(
+        "**Note**: XL 1.0 is slower and requires more memory. You can use CPU offload to reduce memory usage. You can refine the image afterwards with img2img"
+    )
+    prompt_and_generate_button(
+        prefix, "txt2img", width=width, height=height, version=version
+    )
 
 
 def inpainting_tab():
@@ -143,22 +166,35 @@ def inpainting_tab():
 
     with col2:
         if image_input and mask_input:
+            version = st.selectbox(
+                "Model version", ["2.0", "XL 1.0"], key="inpaint-version"
+            )
             prompt_and_generate_button(
-                "inpaint", "inpaint", image_input=image_input, mask_input=mask_input
+                "inpaint",
+                "inpaint",
+                image_input=image_input,
+                mask_input=mask_input,
+                version=version,
             )
 
 
 def img2img_tab():
+    prefix = "img2img"
     col1, col2 = st.columns(2)
 
     with col1:
-        image = image_uploader("img2img")
+        image = image_uploader(prefix)
         if image:
             st.image(image)
 
     with col2:
         if image:
-            prompt_and_generate_button("img2img", "img2img", image_input=image)
+            version = st.selectbox(
+                "Model version", ["2.1", "XL 1.0 refiner"], key=f"{prefix}-version"
+            )
+            prompt_and_generate_button(
+                prefix, "img2img", image_input=image, version=version
+            )
 
 
 def main():
@@ -182,9 +218,12 @@ def main():
         output_image = get_image(OUTPUT_IMAGE_KEY)
         if output_image:
             st.image(output_image)
-            if st.button("Use this image for inpainting and img2img"):
+            if st.button("Use this image for img2img"):
                 set_image(LOADED_IMAGE_KEY, output_image.copy())
                 st.experimental_rerun()
+            st.markdown(
+                "The button should also work for inpainting. However, there is a bug in the inpainting canvas so clicking the button will sometimes work for inpainting and sometimes not. It depends on whether you have previously uploaded an image in inpainting."
+            )
         else:
             st.markdown("No output generated yet")
 
