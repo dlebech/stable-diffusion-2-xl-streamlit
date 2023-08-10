@@ -1,6 +1,6 @@
 # stable-diffusion-2-xl-streamlit
 
-A *super minimal* Streamlit app for playing around with Stable Diffusion 2.1 an XL 1.0.
+A *super minimal* Streamlit app for playing around with Stable Diffusion 2.1 and XL 1.0.
 
 Includes:
 - Text to image (txt2img) (v2.1 and XL 1.0)
