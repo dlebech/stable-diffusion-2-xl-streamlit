@@ -100,6 +100,7 @@ def generate(
     enable_attention_slicing=False,
     enable_cpu_offload=False,
     version="2.1",
+    strength=1.0,
 ):
     """Generates an image based on the given prompt and pipeline name"""
     negative_prompt = negative_prompt if negative_prompt else None
@@ -135,7 +136,7 @@ def generate(
     print("kwargs", kwargs)
 
     if pipeline_name == "inpaint" and image_input and mask_input:
-        kwargs.update(image=image_input, mask_image=mask_input)
+        kwargs.update(image=image_input, mask_image=mask_input, strength=strength)
     elif pipeline_name == "txt2img":
         kwargs.update(width=width, height=height)
     elif pipeline_name == "img2img" and image_input:
@@ -183,5 +184,5 @@ def generate(
     )
     image.save(f"{filename}.png")
     with open(f"{filename}.txt", "w") as f:
-        f.write(prompt)
+        f.write(f"Prompt: {prompt}\n\nNegative Prompt: {negative_prompt}")
     return image

@@ -106,7 +106,6 @@ def image_uploader(prefix):
     if image:
         image = Image.open(image)
         print(f"loaded input image of size ({image.width}, {image.height})")
-        image = image.resize((DEFAULT_WIDTH, DEFAULT_HEIGHT))
         return image
 
     return get_image(LOADED_IMAGE_KEY)
@@ -159,6 +158,7 @@ def txt2img_tab():
 
 
 def inpainting_tab():
+    prefix = "inpaint"
     col1, col2 = st.columns(2)
 
     with col1:
@@ -169,12 +169,21 @@ def inpainting_tab():
             version = st.selectbox(
                 "Model version", ["2.0", "XL 1.0"], key="inpaint-version"
             )
+            strength = st.slider(
+                "Strength of inpainting (1.0 essentially ignores the masked area of the original input image)",
+                min_value=0.0,
+                max_value=1.0,
+                value=1.0,
+                step=0.05,
+                key=f"{prefix}-strength",
+            )
             prompt_and_generate_button(
-                "inpaint",
+                prefix,
                 "inpaint",
                 image_input=image_input,
                 mask_input=mask_input,
                 version=version,
+                strength=strength,
             )
 
 
@@ -192,8 +201,16 @@ def img2img_tab():
             version = st.selectbox(
                 "Model version", ["2.1", "XL 1.0 refiner"], key=f"{prefix}-version"
             )
+            strength = st.slider(
+                "Strength (1.0 ignores the existing image so it's not a useful value)",
+                min_value=0.0,
+                max_value=1.0,
+                value=0.3,
+                step=0.05,
+                key=f"{prefix}-strength",
+            )
             prompt_and_generate_button(
-                prefix, "img2img", image_input=image, version=version
+                prefix, "img2img", image_input=image, version=version, strength=strength
             )
 
 
