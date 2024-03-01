@@ -9,6 +9,7 @@ import torch
 from diffusers import (
     DiffusionPipeline,
     StableDiffusionPipeline,
+    StableDiffusionXLPipeline,
     StableDiffusionXLImg2ImgPipeline,
     StableDiffusionXLInpaintPipeline,
     EulerDiscreteScheduler,
@@ -17,7 +18,7 @@ from diffusers import (
 )
 
 PIPELINE_NAMES = Literal["txt2img", "inpaint", "img2img"]
-MODEL_VERSIONS = Literal["2.0", "2.1", "XL 1.0", "XL 1.0 refiner"]
+MODEL_VERSIONS = Literal["2.0", "2.1", "XL 1.0", "XL 1.0 refiner", "SDXL Turbo"]
 
 
 @st.cache_resource(max_entries=1)
@@ -28,9 +29,14 @@ def get_pipeline(
 ) -> DiffusionPipeline:
     pipe = None
 
-    if name == "txt2img" and version == "XL 1.0":
-        pipe = DiffusionPipeline.from_pretrained(
-            "stabilityai/stable-diffusion-xl-base-1.0",
+    if name == "txt2img" and version in ("XL 1.0", "SDXL Turbo"):
+        model_id = (
+            "stabilityai/sdxl-turbo"
+            if version == "SDXL Turbo"
+            else "stabilityai/stable-diffusion-xl-base-1.0"
+        )
+        pipe = StableDiffusionXLPipeline.from_pretrained(
+            model_id,
             torch_dtype=torch.float16,
             use_safetensors=True,
             variant="fp16",
@@ -54,7 +60,7 @@ def get_pipeline(
         pipe = StableDiffusionPipeline.from_pretrained(
             model_id,
             scheduler=scheduler,
-            revision="fp16",
+            variant="fp16",
             torch_dtype=torch.float16,
         )
 
@@ -63,7 +69,7 @@ def get_pipeline(
     elif name == "inpaint" and version == "2.0":
         pipe = StableDiffusionInpaintPipeline.from_pretrained(
             "stabilityai/stable-diffusion-2-inpainting",
-            revision="fp16",
+            variant="fp16",
             torch_dtype=torch.float16,
         )
     elif name == "inpaint" and version == "XL 1.0":
@@ -105,7 +111,10 @@ def generate(
     """Generates an image based on the given prompt and pipeline name"""
     negative_prompt = negative_prompt if negative_prompt else None
     p = st.progress(0)
-    callback = lambda step, *_: p.progress(step / steps)
+
+    def callback(pipe, step, timestep, callback_kwargs):
+        p.progress(step / steps)
+        return callback_kwargs
 
     # NOTE: This code is not being used, since the combined XL 1.0 and refiner
     # pipeline did not work on my hardware.
@@ -129,7 +138,7 @@ def generate(
         prompt=prompt,
         negative_prompt=negative_prompt,
         num_inference_steps=steps,
-        callback=callback,
+        callback_on_step_end=callback,
         guidance_scale=guidance_scale,
     )
 

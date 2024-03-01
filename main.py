@@ -1,11 +1,10 @@
 from typing import Optional
 
-import numpy as np
 import streamlit as st
 from streamlit_drawable_canvas import st_canvas
 from PIL import Image
 
-from sd2.generate import PIPELINE_NAMES, MODEL_VERSIONS, generate
+from sd2.generate import PIPELINE_NAMES, generate
 
 DEFAULT_PROMPT = "border collie puppy"
 DEFAULT_WIDTH, DEFAULT_HEIGHT = 512, 512
@@ -148,7 +147,7 @@ def inpainting():
 def txt2img_tab():
     prefix = "txt2img"
     width, height = width_and_height_sliders(prefix)
-    version = st.selectbox("Model version", ["2.1", "XL 1.0"], key=f"{prefix}-version")
+    version = st.selectbox("Model version", ["2.1", "XL 1.0", "SDXL Turbo"], key=f"{prefix}-version")
     st.markdown(
         "**Note**: XL 1.0 is slower and requires more memory. You can use CPU offload to reduce memory usage. You can refine the image afterwards with img2img"
     )
@@ -216,7 +215,7 @@ def img2img_tab():
 
 def main():
     st.set_page_config(layout="wide")
-    st.title("Stable Diffusion 2.0 Simple Playground")
+    st.title("Stable Diffusion 2.0/2.1/XL Simple Playground")
 
     tab1, tab2, tab3 = st.tabs(
         ["Text to Image (txt2img)", "Inpainting", "Image to image (img2img)"]
