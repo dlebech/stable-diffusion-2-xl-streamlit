@@ -18,6 +18,11 @@ from diffusers import (
 )
 
 PIPELINE_NAMES = Literal["txt2img", "inpaint", "img2img"]
+SD_20 = "2.0"
+SD_21 = "2.1"
+SD_XL_10 = "XL 1.0"
+SD_XL_10_REFINER = "XL 1.0 refiner"
+SD_XL_TURBO = "SDXL Turbo"
 MODEL_VERSIONS = Literal["2.0", "2.1", "XL 1.0", "XL 1.0 refiner", "SDXL Turbo"]
 
 
@@ -29,10 +34,10 @@ def get_pipeline(
 ) -> DiffusionPipeline:
     pipe = None
 
-    if name == "txt2img" and version in ("XL 1.0", "SDXL Turbo"):
+    if name == "txt2img" and version in (SD_XL_10, SD_XL_TURBO):
         model_id = (
             "stabilityai/sdxl-turbo"
-            if version == "SDXL Turbo"
+            if version == SD_XL_TURBO
             else "stabilityai/stable-diffusion-xl-base-1.0"
         )
         pipe = StableDiffusionXLPipeline.from_pretrained(
@@ -43,14 +48,14 @@ def get_pipeline(
         )
         # Potential speedup, but didn't work super great for me.
         # pipe.unet = torch.compile(pipe.unet, mode="reduce-overhead", fullgraph=True)
-    elif name == "img2img" and version == "XL 1.0 refiner":
+    elif name == "img2img" and version == SD_XL_10_REFINER:
         pipe = StableDiffusionXLImg2ImgPipeline.from_pretrained(
             "stabilityai/stable-diffusion-xl-refiner-1.0",
             torch_dtype=torch.float16,
             use_safetensors=True,
             variant="fp16",
         )
-    elif name in ["txt2img", "img2img"] and version == "2.1":
+    elif name in ["txt2img", "img2img"] and version == SD_21:
         model_id = "stabilityai/stable-diffusion-2-1"
 
         scheduler = EulerDiscreteScheduler.from_pretrained(
@@ -66,13 +71,13 @@ def get_pipeline(
 
         if name == "img2img":
             pipe = StableDiffusionImg2ImgPipeline(**pipe.components)
-    elif name == "inpaint" and version == "2.0":
+    elif name == "inpaint" and version == SD_20:
         pipe = StableDiffusionInpaintPipeline.from_pretrained(
             "stabilityai/stable-diffusion-2-inpainting",
             variant="fp16",
             torch_dtype=torch.float16,
         )
-    elif name == "inpaint" and version == "XL 1.0":
+    elif name == "inpaint" and version == SD_XL_10:
         pipe = StableDiffusionXLInpaintPipeline.from_pretrained(
             "stabilityai/stable-diffusion-xl-base-1.0",
             torch_dtype=torch.float16,
@@ -85,8 +90,6 @@ def get_pipeline(
 
     if enable_cpu_offload:
         print("Enabling CPU offload for pipeline")
-        # If we're reeeally strapped for memory, the sequential cpu offload can be used.
-        # pipe.enable_sequential_cpu_offload()
         pipe.enable_model_cpu_offload()
     else:
         pipe = pipe.to("cuda")

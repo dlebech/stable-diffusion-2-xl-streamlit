@@ -4,7 +4,7 @@ import streamlit as st
 from streamlit_drawable_canvas import st_canvas
 from PIL import Image
 
-from sd2.generate import PIPELINE_NAMES, generate
+from sd2.generate import PIPELINE_NAMES, generate, SD_20, SD_21, SD_XL_TURBO, SD_XL_10, SD_XL_10_REFINER
 
 DEFAULT_PROMPT = "border collie puppy"
 DEFAULT_WIDTH, DEFAULT_HEIGHT = 512, 512
@@ -147,7 +147,7 @@ def inpainting():
 def txt2img_tab():
     prefix = "txt2img"
     width, height = width_and_height_sliders(prefix)
-    version = st.selectbox("Model version", ["2.1", "XL 1.0", "SDXL Turbo"], key=f"{prefix}-version")
+    version = st.selectbox("Model version", [SD_21, SD_XL_10, SD_XL_TURBO], key=f"{prefix}-version")
     st.markdown(
         "**Note**: XL 1.0 is slower and requires more memory. You can use CPU offload to reduce memory usage. You can refine the image afterwards with img2img"
     )
@@ -166,7 +166,7 @@ def inpainting_tab():
     with col2:
         if image_input and mask_input:
             version = st.selectbox(
-                "Model version", ["2.0", "XL 1.0"], key="inpaint-version"
+                "Model version", [SD_20, SD_XL_10], key="inpaint-version"
             )
             strength = st.slider(
                 "Strength of inpainting (1.0 essentially ignores the masked area of the original input image)",
@@ -198,7 +198,7 @@ def img2img_tab():
     with col2:
         if image:
             version = st.selectbox(
-                "Model version", ["2.1", "XL 1.0 refiner"], key=f"{prefix}-version"
+                "Model version", [SD_21, SD_XL_10_REFINER], key=f"{prefix}-version"
             )
             strength = st.slider(
                 "Strength (1.0 ignores the existing image so it's not a useful value)",
