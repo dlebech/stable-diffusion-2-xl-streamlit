@@ -24,12 +24,37 @@ Observations based on my own machine:
 
 ## Install & Run
 
+Requires Python 3.12 (pinned in `.python-version` and the version it's tested with; `requires-python` allows newer, which may work). Dependencies are managed with [uv](https://docs.astral.sh/uv/) (`pyproject.toml` + `uv.lock`):
+
 ```
+uv sync
+uv run streamlit run main.py
+```
+
+`uv sync` creates a `.venv` with Python 3.12 (uv downloads it if needed).
+
+Alternatively with pip, using the `requirements.txt` exported from the lock file:
+
+```
+python3.12 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 streamlit run main.py
 ```
 
+### GPU / CUDA wheels
+
+On Linux and Windows, PyTorch is installed from the official PyTorch wheel index with CUDA 13.2 builds (`https://download.pytorch.org/whl/cu132`). This is configured in `pyproject.toml` for uv, and `requirements.txt` includes it as an `--extra-index-url` for pip. The CUDA libraries come bundled with the wheels, you only need a recent Nvidia driver (CUDA 13 needs driver 580 or newer, check with `nvidia-smi`). If you need a different CUDA version, change the index URL in `pyproject.toml` and run `uv lock` (not every PyTorch release is built for every CUDA version, so you may also have to relax the `torch`/`torchvision` versions).
+
+To regenerate `requirements.txt` after changing dependencies:
+
+```
+uv export --no-hashes --no-dev --emit-index-url --format requirements-txt -o requirements.txt
+```
+
 The first time it runs, it will download the model from Hugging Face automatically.
+
+**Note:** Stability AI has removed the SD 2.x repositories (`stabilityai/stable-diffusion-2-1` and `stabilityai/stable-diffusion-2-inpainting`) from Hugging Face. The 2.1 and 2.0 options therefore only work if you already have those models in your local Hugging Face cache (or point the model IDs at a mirror). The XL 1.0, XL refiner and SDXL Turbo models still download automatically.
 
 Images are automatically saved in an `outputs/` folder, along with their prompt.
 

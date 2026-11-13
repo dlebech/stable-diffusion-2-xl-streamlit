@@ -42,7 +42,7 @@ def get_pipeline(
         )
         pipe = StableDiffusionXLPipeline.from_pretrained(
             model_id,
-            torch_dtype=torch.float16,
+            dtype=torch.float16,
             use_safetensors=True,
             variant="fp16",
         )
@@ -51,7 +51,7 @@ def get_pipeline(
     elif name == "img2img" and version == SD_XL_10_REFINER:
         pipe = StableDiffusionXLImg2ImgPipeline.from_pretrained(
             "stabilityai/stable-diffusion-xl-refiner-1.0",
-            torch_dtype=torch.float16,
+            dtype=torch.float16,
             use_safetensors=True,
             variant="fp16",
         )
@@ -66,7 +66,7 @@ def get_pipeline(
             model_id,
             scheduler=scheduler,
             variant="fp16",
-            torch_dtype=torch.float16,
+            dtype=torch.float16,
         )
 
         if name == "img2img":
@@ -75,12 +75,12 @@ def get_pipeline(
         pipe = StableDiffusionInpaintPipeline.from_pretrained(
             "stabilityai/stable-diffusion-2-inpainting",
             variant="fp16",
-            torch_dtype=torch.float16,
+            dtype=torch.float16,
         )
     elif name == "inpaint" and version == SD_XL_10:
         pipe = StableDiffusionXLInpaintPipeline.from_pretrained(
             "stabilityai/stable-diffusion-xl-base-1.0",
-            torch_dtype=torch.float16,
+            dtype=torch.float16,
             variant="fp16",
             use_safetensors=True,
         )

@@ -1,7 +1,6 @@
 from typing import Optional
 
 import streamlit as st
-from streamlit_drawable_canvas import st_canvas
 from PIL import Image
 
 from sd2.generate import PIPELINE_NAMES, generate, SD_20, SD_21, SD_XL_TURBO, SD_XL_10, SD_XL_10_REFINER
@@ -118,6 +117,10 @@ def inpainting():
 
     brush_size = st.number_input("Brush Size", value=50, min_value=1, max_value=100)
 
+    # Imported here because streamlit-drawable-canvas (>=0.13) is a Streamlit
+    # v2 component that can only be registered inside a running Streamlit app.
+    from streamlit_drawable_canvas import st_canvas
+
     canvas_result = st_canvas(
         fill_color="rgba(255, 255, 255, 0.0)",
         stroke_width=brush_size,
@@ -128,6 +131,7 @@ def inpainting():
         height=image.height,
         width=image.width,
         drawing_mode="freedraw",
+        return_image_data=True,
         key="inpainting-canvas",
     )
 
@@ -236,7 +240,7 @@ def main():
             st.image(output_image)
             if st.button("Use this image for img2img"):
                 set_image(LOADED_IMAGE_KEY, output_image.copy())
-                st.experimental_rerun()
+                st.rerun()
             st.markdown(
                 "The button should also work for inpainting. However, there is a bug in the inpainting canvas so clicking the button will sometimes work for inpainting and sometimes not. It depends on whether you have previously uploaded an image in inpainting."
             )
