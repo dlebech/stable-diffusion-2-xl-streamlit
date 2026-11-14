@@ -69,6 +69,12 @@ MODEL_DEFAULTS = {
     SD_XL_TURBO: (2, 0.0),
 }
 
+# Default txt2img (width, height) per model: the size each model was trained for.
+DEFAULT_SIZE = (1024, 1024)
+MODEL_SIZES = {
+    SD_XL_TURBO: (512, 512),
+}
+
 # Z-Image and FLUX.2 don't fit in GPU memory without CPU offload below this.
 OFFLOAD_REQUIRED_BELOW_BYTES = 24 * 2**30
 
@@ -177,10 +183,15 @@ def generate(
 
     # Not every pipeline supports every option (e.g. FLUX.2 has no negative prompt).
     supported = inspect.signature(pipe.__call__).parameters
+    ignored = set()
     for key in [k for k in kwargs if k not in supported]:
         if kwargs[key] is not None:
             print(f"{type(pipe).__name__} does not support {key}, ignoring it")
+            ignored.add(key)
         del kwargs[key]
+    # Step-distilled pipelines (FLUX.2 [klein]) accept guidance_scale but ignore it.
+    if getattr(pipe.config, "is_distilled", False) and "guidance_scale" in kwargs:
+        ignored.add("guidance_scale")
 
     print("kwargs", kwargs)
 
@@ -220,5 +231,58 @@ def generate(
     )
     image.save(f"{filename}.png")
     with open(f"{filename}.txt", "w") as f:
-        f.write(f"Prompt: {prompt}\n\nNegative Prompt: {negative_prompt}")
+        f.write(
+            settings_text(
+                prompt,
+                pipeline_name,
+                version=version if not refiner_version else f"{version} + {refiner_version}",
+                negative_prompt=negative_prompt,
+                steps=steps,
+                guidance_scale=guidance_scale,
+                size=image.size,
+                strength=strength,
+                enable_cpu_offload=enable_cpu_offload,
+                ignored=ignored,
+            )
+        )
     return image
+
+
+def settings_text(
+    prompt,
+    pipeline_name: PIPELINE_NAMES,
+    version,
+    negative_prompt,
+    steps,
+    guidance_scale,
+    size,
+    strength,
+    enable_cpu_offload,
+    ignored=frozenset(),
+) -> str:
+    """Human-readable generation settings, saved next to each output image."""
+
+    def one_line(text):
+        return re.sub(r"\s*[\r\n]+\s*", " ", (text or "").strip())
+
+    def value(key, v):
+        return f"{v} (ignored by this model)" if key in ignored else v
+
+    model_ids = [
+        PIPELINES[(pipeline_name, v)][1]
+        for v in version.split(" + ")
+        if (pipeline_name, v) in PIPELINES
+    ]
+    lines = [
+        f"Prompt: {one_line(prompt)}",
+        f"Negative prompt: {value('negative_prompt', one_line(negative_prompt))}",
+        f"Pipeline: {pipeline_name}",
+        f"Model: {version}" + (f" ({', '.join(model_ids)})" if model_ids else ""),
+        f"Steps: {steps}",
+        f"Guidance scale: {value('guidance_scale', guidance_scale)}",
+        f"Size: {size[0]}x{size[1]}",
+    ]
+    if pipeline_name != "txt2img":
+        lines.append(f"Strength: {value('strength', strength)}")
+    lines.append(f"CPU offload: {'yes' if enable_cpu_offload else 'no'}")
+    return "\n".join(lines) + "\n"

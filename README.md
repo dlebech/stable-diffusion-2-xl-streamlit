@@ -8,7 +8,7 @@ Includes:
 - Inpainting: Z-Image Turbo, FLUX.2 [klein] 4B, XL 1.0
 - Negative prompt input for all methods (ignored by the models that don't support it, e.g. FLUX.2).
 
-Uses Z-Image Turbo by default. The steps and guidance sliders start at sensible values for each model (the turbo/distilled models want few steps, around 2-9, and guidance 0; FLUX.2 ignores guidance), and the app shows a short hint for each.
+Uses Z-Image Turbo by default. The steps and guidance sliders start at sensible values for each model (the turbo/distilled models want few steps, around 2-9, and guidance 0; FLUX.2 ignores guidance), the txt2img width and height start at the model's native size (1024x1024, 512x512 for SDXL Turbo), and the app shows a short hint for each.
 
 FLUX.2 [klein] works like an image editor in img2img and inpainting: it uses the input image as a reference, so the prompt should describe the change ("replace the dog with a cat"), and the img2img strength is ignored.
 
@@ -69,7 +69,7 @@ uv export --no-hashes --no-dev --emit-index-url --format requirements-txt -o req
 
 The first time it runs, it will download the model from Hugging Face automatically.
 
-Images are automatically saved in an `outputs/` folder, along with their prompt.
+Images are automatically saved in an `outputs/` folder, each with a `.txt` file next to it that records the settings used: prompt, negative prompt, pipeline (txt2img/img2img/inpaint), model, steps, guidance scale, output size, strength (img2img/inpaint) and whether CPU offload was on.
 
 ### Out of memory errors
 

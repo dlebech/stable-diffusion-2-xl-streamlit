@@ -4,17 +4,18 @@ import streamlit as st
 from PIL import Image
 
 from sd2.generate import (
+    DEFAULT_SIZE,
     DEFAULT_STEPS_AND_GUIDANCE,
     FLUX_2_KLEIN_4B,
     MODEL_DEFAULTS,
     MODEL_HINTS,
+    MODEL_SIZES,
     PIPELINE_NAMES,
     generate,
     model_versions,
 )
 
 DEFAULT_PROMPT = "border collie puppy"
-DEFAULT_WIDTH, DEFAULT_HEIGHT = 512, 512
 OUTPUT_IMAGE_KEY = "output_img"
 LOADED_IMAGE_KEY = "loaded_image"
 
@@ -40,7 +41,8 @@ def prompt_and_generate_button(prefix, pipeline_name: PIPELINE_NAMES, **kwargs):
         value="",
         key=f"{prefix}-negative-prompt",
     )
-    # The version is part of the slider keys so each model gets its own defaults.
+    # The version is part of the slider keys so each model starts at its own
+    # defaults (switching models resets the sliders to that model's defaults).
     version = kwargs.get("version")
     default_steps, default_guidance = MODEL_DEFAULTS.get(
         version, DEFAULT_STEPS_AND_GUIDANCE
@@ -89,7 +91,10 @@ def prompt_and_generate_button(prefix, pipeline_name: PIPELINE_NAMES, **kwargs):
         st.image(image)
 
 
-def width_and_height_sliders(prefix):
+def width_and_height_sliders(prefix, version):
+    # The version is part of the slider keys so each model starts at its own
+    # default size (switching models resets the sliders to that model's size).
+    default_width, default_height = MODEL_SIZES.get(version, DEFAULT_SIZE)
     col1, col2 = st.columns(2)
     with col1:
         width = st.slider(
@@ -97,8 +102,8 @@ def width_and_height_sliders(prefix):
             min_value=64,
             max_value=1600,
             step=16,
-            value=768,
-            key=f"{prefix}-width",
+            value=default_width,
+            key=f"{prefix}-{version}-width",
         )
     with col2:
         height = st.slider(
@@ -106,8 +111,8 @@ def width_and_height_sliders(prefix):
             min_value=64,
             max_value=1600,
             step=16,
-            value=768,
-            key=f"{prefix}-height",
+            value=default_height,
+            key=f"{prefix}-{version}-height",
         )
     return width, height
 
@@ -177,8 +182,8 @@ def model_selectbox(prefix, pipeline_name: PIPELINE_NAMES):
 
 def txt2img_tab():
     prefix = "txt2img"
-    width, height = width_and_height_sliders(prefix)
     version = model_selectbox(prefix, "txt2img")
+    width, height = width_and_height_sliders(prefix, version)
     st.markdown(
         "**Note**: Z-Image and FLUX.2 need CPU offload on 16GB GPUs (turned on automatically). XL 1.0 output can be refined afterwards with img2img"
     )
