@@ -1,5 +1,5 @@
 [project]
-name = "stable-diffusion-2-xl-streamlit"
+name = "diffusers-streamlit"
 version = "0.1.0"
 description = "A super minimal Streamlit app for playing around with Z-Image Turbo, FLUX.2 [klein] and Stable Diffusion XL"
 readme = "README.md"

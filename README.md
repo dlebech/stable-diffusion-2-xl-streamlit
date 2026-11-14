@@ -1,6 +1,6 @@
-# stable-diffusion-2-xl-streamlit
+# diffusers-streamlit
 
-A *super minimal* Streamlit app for playing around with open image generation models: Z-Image Turbo, FLUX.2 [klein] and Stable Diffusion XL 1.0. (It started out as a Stable Diffusion 2 app, hence the name.)
+A *super minimal* Streamlit app for playing around with open image generation models: Z-Image Turbo, FLUX.2 [klein] and Stable Diffusion XL 1.0. (It started out as a Stable Diffusion 2 app.)
 
 Includes:
 - Text to image (txt2img): Z-Image Turbo, FLUX.2 [klein] 4B, XL 1.0, SDXL Turbo
