@@ -1,5 +1,6 @@
 import gc
 import datetime
+import inspect
 import os
 import re
 from typing import Literal
@@ -8,85 +9,94 @@ import streamlit as st
 import torch
 from diffusers import (
     DiffusionPipeline,
-    StableDiffusionPipeline,
+    Flux2KleinInpaintPipeline,
+    Flux2KleinPipeline,
     StableDiffusionXLPipeline,
     StableDiffusionXLImg2ImgPipeline,
     StableDiffusionXLInpaintPipeline,
-    EulerDiscreteScheduler,
-    StableDiffusionInpaintPipeline,
-    StableDiffusionImg2ImgPipeline,
+    ZImageImg2ImgPipeline,
+    ZImageInpaintPipeline,
+    ZImagePipeline,
 )
 
 PIPELINE_NAMES = Literal["txt2img", "inpaint", "img2img"]
-SD_20 = "2.0"
-SD_21 = "2.1"
+Z_IMAGE_TURBO = "Z-Image Turbo"
+FLUX_2_KLEIN_4B = "FLUX.2 [klein] 4B"
 SD_XL_10 = "XL 1.0"
 SD_XL_10_REFINER = "XL 1.0 refiner"
 SD_XL_TURBO = "SDXL Turbo"
-MODEL_VERSIONS = Literal["2.0", "2.1", "XL 1.0", "XL 1.0 refiner", "SDXL Turbo"]
+MODEL_VERSIONS = Literal[
+    "Z-Image Turbo",
+    "FLUX.2 [klein] 4B",
+    "XL 1.0",
+    "XL 1.0 refiner",
+    "SDXL Turbo",
+]
+
+SDXL_VERSIONS = (SD_XL_10, SD_XL_10_REFINER, SD_XL_TURBO)
+
+_SDXL_KWARGS = dict(dtype=torch.float16, use_safetensors=True, variant="fp16")
+_BF16 = dict(dtype=torch.bfloat16)
+
+# (pipeline name, model version) -> (pipeline class, model id, from_pretrained kwargs).
+# The order here is the order of the model options in each tab of the UI.
+PIPELINES = {
+    ("txt2img", Z_IMAGE_TURBO): (ZImagePipeline, "Tongyi-MAI/Z-Image-Turbo", _BF16),
+    ("txt2img", FLUX_2_KLEIN_4B): (Flux2KleinPipeline, "black-forest-labs/FLUX.2-klein-4B", _BF16),
+    ("txt2img", SD_XL_10): (StableDiffusionXLPipeline, "stabilityai/stable-diffusion-xl-base-1.0", _SDXL_KWARGS),
+    ("txt2img", SD_XL_TURBO): (StableDiffusionXLPipeline, "stabilityai/sdxl-turbo", _SDXL_KWARGS),
+    ("img2img", Z_IMAGE_TURBO): (ZImageImg2ImgPipeline, "Tongyi-MAI/Z-Image-Turbo", _BF16),
+    # FLUX.2 [klein] has no strength-based img2img; the regular pipeline uses the image as an editing reference.
+    ("img2img", FLUX_2_KLEIN_4B): (Flux2KleinPipeline, "black-forest-labs/FLUX.2-klein-4B", _BF16),
+    ("img2img", SD_XL_10_REFINER): (StableDiffusionXLImg2ImgPipeline, "stabilityai/stable-diffusion-xl-refiner-1.0", _SDXL_KWARGS),
+    ("inpaint", Z_IMAGE_TURBO): (ZImageInpaintPipeline, "Tongyi-MAI/Z-Image-Turbo", _BF16),
+    ("inpaint", FLUX_2_KLEIN_4B): (Flux2KleinInpaintPipeline, "black-forest-labs/FLUX.2-klein-4B", _BF16),
+    ("inpaint", SD_XL_10): (StableDiffusionXLInpaintPipeline, "stabilityai/stable-diffusion-xl-base-1.0", _SDXL_KWARGS),
+}
+
+# Short usage hints shown below the model selector.
+MODEL_HINTS = {
+    Z_IMAGE_TURBO: "Turbo model: 8-9 steps, guidance 0 (at guidance 0 the negative prompt has no effect). CPU offload is turned on automatically on GPUs with less than 24GB.",
+    FLUX_2_KLEIN_4B: "Distilled model: 4 steps; guidance and negative prompt are ignored. CPU offload is turned on automatically on GPUs with less than 24GB.",
+    SD_XL_TURBO: "Turbo model: 1-4 steps, guidance 0.",
+}
+
+# Default (steps, guidance scale) per model; everything else uses DEFAULT_STEPS_AND_GUIDANCE.
+DEFAULT_STEPS_AND_GUIDANCE = (20, 7.5)
+MODEL_DEFAULTS = {
+    Z_IMAGE_TURBO: (9, 0.0),
+    FLUX_2_KLEIN_4B: (4, 1.0),
+    SD_XL_TURBO: (2, 0.0),
+}
+
+# Default txt2img (width, height) per model: the size each model was trained for.
+DEFAULT_SIZE = (1024, 1024)
+MODEL_SIZES = {
+    SD_XL_TURBO: (512, 512),
+}
+
+# Z-Image and FLUX.2 don't fit in GPU memory without CPU offload below this.
+OFFLOAD_REQUIRED_BELOW_BYTES = 24 * 2**30
+
+
+def model_versions(name: PIPELINE_NAMES) -> list[str]:
+    """The model versions available for a pipeline, default first."""
+    return [version for (n, version) in PIPELINES if n == name]
 
 
 @st.cache_resource(max_entries=1)
 def get_pipeline(
     name: PIPELINE_NAMES,
-    version: MODEL_VERSIONS = "2.1",
+    version: MODEL_VERSIONS = Z_IMAGE_TURBO,
     enable_cpu_offload=False,
 ) -> DiffusionPipeline:
-    pipe = None
-
-    if name == "txt2img" and version in (SD_XL_10, SD_XL_TURBO):
-        model_id = (
-            "stabilityai/sdxl-turbo"
-            if version == SD_XL_TURBO
-            else "stabilityai/stable-diffusion-xl-base-1.0"
-        )
-        pipe = StableDiffusionXLPipeline.from_pretrained(
-            model_id,
-            torch_dtype=torch.float16,
-            use_safetensors=True,
-            variant="fp16",
-        )
-        # Potential speedup, but didn't work super great for me.
-        # pipe.unet = torch.compile(pipe.unet, mode="reduce-overhead", fullgraph=True)
-    elif name == "img2img" and version == SD_XL_10_REFINER:
-        pipe = StableDiffusionXLImg2ImgPipeline.from_pretrained(
-            "stabilityai/stable-diffusion-xl-refiner-1.0",
-            torch_dtype=torch.float16,
-            use_safetensors=True,
-            variant="fp16",
-        )
-    elif name in ["txt2img", "img2img"] and version == SD_21:
-        model_id = "stabilityai/stable-diffusion-2-1"
-
-        scheduler = EulerDiscreteScheduler.from_pretrained(
-            model_id,
-            subfolder="scheduler",
-        )
-        pipe = StableDiffusionPipeline.from_pretrained(
-            model_id,
-            scheduler=scheduler,
-            variant="fp16",
-            torch_dtype=torch.float16,
-        )
-
-        if name == "img2img":
-            pipe = StableDiffusionImg2ImgPipeline(**pipe.components)
-    elif name == "inpaint" and version == SD_20:
-        pipe = StableDiffusionInpaintPipeline.from_pretrained(
-            "stabilityai/stable-diffusion-2-inpainting",
-            variant="fp16",
-            torch_dtype=torch.float16,
-        )
-    elif name == "inpaint" and version == SD_XL_10:
-        pipe = StableDiffusionXLInpaintPipeline.from_pretrained(
-            "stabilityai/stable-diffusion-xl-base-1.0",
-            torch_dtype=torch.float16,
-            variant="fp16",
-            use_safetensors=True,
-        )
-
-    if pipe is None:
+    if (name, version) not in PIPELINES:
         raise Exception(f"Could not find pipeline {name} and version {version}")
+
+    pipeline_class, model_id, kwargs = PIPELINES[(name, version)]
+    pipe = pipeline_class.from_pretrained(model_id, **kwargs)
+    # Potential speedup for XL, but didn't work super great for me.
+    # pipe.unet = torch.compile(pipe.unet, mode="reduce-overhead", fullgraph=True)
 
     if enable_cpu_offload:
         print("Enabling CPU offload for pipeline")
@@ -108,7 +118,7 @@ def generate(
     guidance_scale=7.5,
     enable_attention_slicing=False,
     enable_cpu_offload=False,
-    version="2.1",
+    version=Z_IMAGE_TURBO,
     strength=1.0,
 ):
     """Generates an image based on the given prompt and pipeline name"""
@@ -126,6 +136,14 @@ def generate(
         version, refiner_version = version.split(" + ")
     except:
         pass
+
+    if (
+        version not in SDXL_VERSIONS
+        and not enable_cpu_offload
+        and torch.cuda.get_device_properties(0).total_memory < OFFLOAD_REQUIRED_BELOW_BYTES
+    ):
+        print(f"Enabling CPU offload for {version} (needs more than 24GB of GPU memory otherwise)")
+        enable_cpu_offload = True
 
     pipe = get_pipeline(
         pipeline_name, version=version, enable_cpu_offload=enable_cpu_offload
@@ -145,20 +163,37 @@ def generate(
         guidance_scale=guidance_scale,
     )
 
-    print("kwargs", kwargs)
-
     if pipeline_name == "inpaint" and image_input and mask_input:
         kwargs.update(image=image_input, mask_image=mask_input, strength=strength)
     elif pipeline_name == "txt2img":
         kwargs.update(width=width, height=height)
     elif pipeline_name == "img2img" and image_input:
-        kwargs.update(
-            image=image_input,
-        )
+        kwargs.update(image=image_input, strength=strength)
     else:
         raise Exception(
             f"Cannot generate image for pipeline {pipeline_name} and {prompt}"
         )
+
+    if pipeline_name != "txt2img" and version not in SDXL_VERSIONS:
+        # The newer pipelines default to 1024x1024 output and need sizes
+        # divisible by 16, so keep the input image's size (and aspect ratio).
+        kwargs.update(
+            width=image_input.width // 16 * 16, height=image_input.height // 16 * 16
+        )
+
+    # Not every pipeline supports every option (e.g. FLUX.2 has no negative prompt).
+    supported = inspect.signature(pipe.__call__).parameters
+    ignored = set()
+    for key in [k for k in kwargs if k not in supported]:
+        if kwargs[key] is not None:
+            print(f"{type(pipe).__name__} does not support {key}, ignoring it")
+            ignored.add(key)
+        del kwargs[key]
+    # Step-distilled pipelines (FLUX.2 [klein]) accept guidance_scale but ignore it.
+    if getattr(pipe.config, "is_distilled", False) and "guidance_scale" in kwargs:
+        ignored.add("guidance_scale")
+
+    print("kwargs", kwargs)
 
     high_noise_frac = 0.8
 
@@ -196,5 +231,58 @@ def generate(
     )
     image.save(f"{filename}.png")
     with open(f"{filename}.txt", "w") as f:
-        f.write(f"Prompt: {prompt}\n\nNegative Prompt: {negative_prompt}")
+        f.write(
+            settings_text(
+                prompt,
+                pipeline_name,
+                version=version if not refiner_version else f"{version} + {refiner_version}",
+                negative_prompt=negative_prompt,
+                steps=steps,
+                guidance_scale=guidance_scale,
+                size=image.size,
+                strength=strength,
+                enable_cpu_offload=enable_cpu_offload,
+                ignored=ignored,
+            )
+        )
     return image
+
+
+def settings_text(
+    prompt,
+    pipeline_name: PIPELINE_NAMES,
+    version,
+    negative_prompt,
+    steps,
+    guidance_scale,
+    size,
+    strength,
+    enable_cpu_offload,
+    ignored=frozenset(),
+) -> str:
+    """Human-readable generation settings, saved next to each output image."""
+
+    def one_line(text):
+        return re.sub(r"\s*[\r\n]+\s*", " ", (text or "").strip())
+
+    def value(key, v):
+        return f"{v} (ignored by this model)" if key in ignored else v
+
+    model_ids = [
+        PIPELINES[(pipeline_name, v)][1]
+        for v in version.split(" + ")
+        if (pipeline_name, v) in PIPELINES
+    ]
+    lines = [
+        f"Prompt: {one_line(prompt)}",
+        f"Negative prompt: {value('negative_prompt', one_line(negative_prompt))}",
+        f"Pipeline: {pipeline_name}",
+        f"Model: {version}" + (f" ({', '.join(model_ids)})" if model_ids else ""),
+        f"Steps: {steps}",
+        f"Guidance scale: {value('guidance_scale', guidance_scale)}",
+        f"Size: {size[0]}x{size[1]}",
+    ]
+    if pipeline_name != "txt2img":
+        lines.append(f"Strength: {value('strength', strength)}")
+    lines.append(f"CPU offload: {'yes' if enable_cpu_offload else 'no'}")
+    return "\n".join(lines) + "\n"

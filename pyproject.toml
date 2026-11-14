@@ -1,0 +1,32 @@
+[project]
+name = "diffusers-streamlit"
+version = "0.1.0"
+description = "A super minimal Streamlit app for playing around with Z-Image Turbo, FLUX.2 [klein] and Stable Diffusion XL"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "accelerate>=1.15.0",
+    "diffusers>=0.43.0",
+    "numpy>=2.5.4",
+    "pillow>=13.0.0",
+    "safetensors>=0.8.0",
+    "sentencepiece>=0.2.3",
+    "streamlit>=1.67.0",
+    "streamlit-drawable-canvas>=0.13.0",
+    "torch>=2.15.0",
+    "torchvision>=0.29.2",
+    "transformers>=5.23.0",
+]
+
+[tool.uv]
+package = false
+
+# CUDA builds of PyTorch from the official PyTorch wheel index.
+[[tool.uv.index]]
+name = "pytorch-cu132"
+url = "https://download.pytorch.org/whl/cu132"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu132", marker = "sys_platform == 'linux' or sys_platform == 'win32'" }]
+torchvision = [{ index = "pytorch-cu132", marker = "sys_platform == 'linux' or sys_platform == 'win32'" }]
