@@ -3,7 +3,15 @@ from typing import Optional
 import streamlit as st
 from PIL import Image
 
-from sd2.generate import PIPELINE_NAMES, generate, SD_20, SD_21, SD_XL_TURBO, SD_XL_10, SD_XL_10_REFINER
+from sd2.generate import (
+    DEFAULT_STEPS_AND_GUIDANCE,
+    FLUX_2_KLEIN_4B,
+    MODEL_DEFAULTS,
+    MODEL_HINTS,
+    PIPELINE_NAMES,
+    generate,
+    model_versions,
+)
 
 DEFAULT_PROMPT = "border collie puppy"
 DEFAULT_WIDTH, DEFAULT_HEIGHT = 512, 512
@@ -32,30 +40,35 @@ def prompt_and_generate_button(prefix, pipeline_name: PIPELINE_NAMES, **kwargs):
         value="",
         key=f"{prefix}-negative-prompt",
     )
+    # The version is part of the slider keys so each model gets its own defaults.
+    version = kwargs.get("version")
+    default_steps, default_guidance = MODEL_DEFAULTS.get(
+        version, DEFAULT_STEPS_AND_GUIDANCE
+    )
     col1, col2 = st.columns(2)
     with col1:
         steps = st.slider(
             "Number of inference steps",
             min_value=1,
             max_value=200,
-            value=20,
-            key=f"{prefix}-inference-steps",
+            value=default_steps,
+            key=f"{prefix}-{version}-inference-steps",
         )
     with col2:
         guidance_scale = st.slider(
             "Guidance scale",
             min_value=0.0,
             max_value=20.0,
-            value=7.5,
+            value=default_guidance,
             step=0.5,
-            key=f"{prefix}-guidance-scale",
+            key=f"{prefix}-{version}-guidance-scale",
         )
     enable_attention_slicing = st.checkbox(
         "Enable attention slicing (enables higher resolutions but is slower)",
         key=f"{prefix}-attention-slicing",
     )
     enable_cpu_offload = st.checkbox(
-        "Enable CPU offload (if you run out of memory, e.g. for XL model)",
+        "Enable CPU offload (if you run out of memory, e.g. for XL models; always on for Z-Image and FLUX.2 on GPUs with less than 24GB)",
         key=f"{prefix}-cpu-offload",
         value=False,
     )
@@ -148,12 +161,26 @@ def inpainting():
     return None, None
 
 
+def model_selectbox(prefix, pipeline_name: PIPELINE_NAMES):
+    version = st.selectbox(
+        "Model version", model_versions(pipeline_name), key=f"{prefix}-version"
+    )
+    if version in MODEL_HINTS:
+        st.caption(MODEL_HINTS[version])
+    if version == FLUX_2_KLEIN_4B and pipeline_name != "txt2img":
+        st.caption(
+            "FLUX.2 [klein] edits the input image, so describe the change in the prompt, e.g. \"replace the dog with a cat\"."
+            + (" Strength is ignored." if pipeline_name == "img2img" else "")
+        )
+    return version
+
+
 def txt2img_tab():
     prefix = "txt2img"
     width, height = width_and_height_sliders(prefix)
-    version = st.selectbox("Model version", [SD_21, SD_XL_10, SD_XL_TURBO], key=f"{prefix}-version")
+    version = model_selectbox(prefix, "txt2img")
     st.markdown(
-        "**Note**: XL 1.0 is slower and requires more memory. You can use CPU offload to reduce memory usage. You can refine the image afterwards with img2img"
+        "**Note**: Z-Image and FLUX.2 need CPU offload on 16GB GPUs (turned on automatically). XL 1.0 output can be refined afterwards with img2img"
     )
     prompt_and_generate_button(
         prefix, "txt2img", width=width, height=height, version=version
@@ -169,9 +196,7 @@ def inpainting_tab():
 
     with col2:
         if image_input and mask_input:
-            version = st.selectbox(
-                "Model version", [SD_20, SD_XL_10], key="inpaint-version"
-            )
+            version = model_selectbox(prefix, "inpaint")
             strength = st.slider(
                 "Strength of inpainting (1.0 essentially ignores the masked area of the original input image)",
                 min_value=0.0,
@@ -201,9 +226,7 @@ def img2img_tab():
 
     with col2:
         if image:
-            version = st.selectbox(
-                "Model version", [SD_21, SD_XL_10_REFINER], key=f"{prefix}-version"
-            )
+            version = model_selectbox(prefix, "img2img")
             strength = st.slider(
                 "Strength (1.0 ignores the existing image so it's not a useful value)",
                 min_value=0.0,
@@ -219,7 +242,7 @@ def img2img_tab():
 
 def main():
     st.set_page_config(layout="wide")
-    st.title("Stable Diffusion 2.0/2.1/XL Simple Playground")
+    st.title("Stable Diffusion, Z-Image & FLUX.2 Simple Playground")
 
     tab1, tab2, tab3 = st.tabs(
         ["Text to Image (txt2img)", "Inpainting", "Image to image (img2img)"]

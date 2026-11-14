@@ -1,7 +1,7 @@
 [project]
 name = "stable-diffusion-2-xl-streamlit"
 version = "0.1.0"
-description = "A super minimal Streamlit app for playing around with Stable Diffusion 2.1 and XL 1.0"
+description = "A super minimal Streamlit app for playing around with Z-Image Turbo, FLUX.2 [klein] and Stable Diffusion XL"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

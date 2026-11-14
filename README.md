@@ -1,19 +1,34 @@
 # stable-diffusion-2-xl-streamlit
 
-A *super minimal* Streamlit app for playing around with Stable Diffusion 2.1 and XL 1.0.
+A *super minimal* Streamlit app for playing around with open image generation models: Z-Image Turbo, FLUX.2 [klein] and Stable Diffusion XL 1.0. (It started out as a Stable Diffusion 2 app, hence the name.)
 
 Includes:
-- Text to image (txt2img) (v2.1 and XL 1.0)
-- Image to image (img2img) (v2.1 and XL 1.0)
-- Inpainting (v2.0 and XL 1.0)
-- Negative prompt input for all methods.
+- Text to image (txt2img): Z-Image Turbo, FLUX.2 [klein] 4B, XL 1.0, SDXL Turbo
+- Image to image (img2img): Z-Image Turbo, FLUX.2 [klein] 4B, XL 1.0 refiner
+- Inpainting: Z-Image Turbo, FLUX.2 [klein] 4B, XL 1.0
+- Negative prompt input for all methods (ignored by the models that don't support it, e.g. FLUX.2).
 
-Uses the 2.1 768px model by default. Can be changed to the base (512px) by changing the hardcoded model_id.
+Uses Z-Image Turbo by default. The steps and guidance sliders start at sensible values for each model (the turbo/distilled models want few steps, around 2-9, and guidance 0; FLUX.2 ignores guidance), and the app shows a short hint for each.
+
+FLUX.2 [klein] works like an image editor in img2img and inpainting: it uses the input image as a reference, so the prompt should describe the change ("replace the dog with a cat"), and the img2img strength is ignored.
+
+**Note:** Stable Diffusion 2.0/2.1 were dropped because Stability AI removed those repositories from Hugging Face. Stable Diffusion 3.5 is left out because its repositories are gated behind a licence agreement.
+
+### Models and licences
+
+| Model | Hugging Face repo | Licence |
+|---|---|---|
+| Z-Image Turbo | [Tongyi-MAI/Z-Image-Turbo](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo) | Apache 2.0 |
+| FLUX.2 [klein] 4B | [black-forest-labs/FLUX.2-klein-4B](https://huggingface.co/black-forest-labs/FLUX.2-klein-4B) | Apache 2.0 |
+| XL 1.0, XL 1.0 refiner | [stabilityai/stable-diffusion-xl-base-1.0](https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0), [stabilityai/stable-diffusion-xl-refiner-1.0](https://huggingface.co/stabilityai/stable-diffusion-xl-refiner-1.0) | CreativeML OpenRAIL++-M |
+| SDXL Turbo | [stabilityai/sdxl-turbo](https://huggingface.co/stabilityai/sdxl-turbo) | Stability AI Non-Commercial Research Community License (`sai-nc-community`) |
 
 ## Requirements
 
-- Stable Diffusion generally requires a GPU with at least 8GB of memory.
+- Z-Image Turbo needs a 16GB GPU (with CPU offload, ~12GB peak), FLUX.2 [klein] 4B ~8GB with CPU offload, and the XL models run on 8GB.
 - Make sure you have the Nvidia drivers and all that.
+- The newer models are bigger. On a 16GB GPU (RTX 4070 Ti SUPER), Z-Image Turbo and FLUX.2 [klein] both need CPU offload, which the app turns on automatically for them on GPUs with less than 24GB; it brings peak GPU memory down to roughly 12GB for Z-Image Turbo and 8GB for FLUX.2 [klein] 4B. You also need plenty of system RAM for the offloaded parts (32GB+). The XL models run without offload on 16GB.
+- Disk: Z-Image Turbo is roughly 33GB and FLUX.2 [klein] 4B roughly 16GB.
 
 Observations based on my own machine:
 - Using Ubuntu 22.04 with an RTX 2070 GPU (8GB memory)
@@ -53,8 +68,6 @@ uv export --no-hashes --no-dev --emit-index-url --format requirements-txt -o req
 ```
 
 The first time it runs, it will download the model from Hugging Face automatically.
-
-**Note:** Stability AI has removed the SD 2.x repositories (`stabilityai/stable-diffusion-2-1` and `stabilityai/stable-diffusion-2-inpainting`) from Hugging Face. The 2.1 and 2.0 options therefore only work if you already have those models in your local Hugging Face cache (or point the model IDs at a mirror). The XL 1.0, XL refiner and SDXL Turbo models still download automatically.
 
 Images are automatically saved in an `outputs/` folder, along with their prompt.
 
